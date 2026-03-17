@@ -32,6 +32,7 @@ import java.awt.Color;
 import net.miginfocom.swing.MigLayout;
 
 import javax.swing.JPanel;
+import javax.swing.event.ChangeListener;
 
 /**
  * Swing panel for Now Playing channels table and channel details tab set.
@@ -46,6 +47,7 @@ public class NowPlayingPanel extends JPanel
     private JideTabbedPane mTabbedPane;
     private JideSplitPane mSplitPane;
     private boolean mDetailTabsVisible;
+    private ChangeListener mTabbedPaneChangeListener;
 
     /**
      * GUI panel that combines the currently decoding channels metadata table and viewers for channel details,
@@ -62,6 +64,17 @@ public class NowPlayingPanel extends JPanel
         mDetailTabsVisible = detailTabsVisible;
 
         init();
+    }
+
+    /**
+     * Dispose method to clean up listeners
+     */
+    public void dispose()
+    {
+        if(mTabbedPane != null && mTabbedPaneChangeListener != null)
+        {
+            mTabbedPane.removeChangeListener(mTabbedPaneChangeListener);
+        }
     }
 
     /**
@@ -100,8 +113,9 @@ public class NowPlayingPanel extends JPanel
             mTabbedPane.setFont(this.getFont());
             mTabbedPane.setForeground(Color.BLACK);
             //Register state change listener to toggle visibility state for channel tab to turn-on/off FFT processing
-            mTabbedPane.addChangeListener(e -> mChannelSpectrumSquelchPanel.setPanelVisible(getTabbedPane().getSelectedIndex() == getTabbedPane()
-                    .indexOfComponent(mChannelSpectrumSquelchPanel)));
+            mTabbedPaneChangeListener = e -> mChannelSpectrumSquelchPanel.setPanelVisible(getTabbedPane().getSelectedIndex() == getTabbedPane()
+                    .indexOfComponent(mChannelSpectrumSquelchPanel));
+            mTabbedPane.addChangeListener(mTabbedPaneChangeListener);
         }
 
         return mTabbedPane;

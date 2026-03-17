@@ -193,6 +193,14 @@ public class ChannelMetadataPanel extends JPanel implements ListSelectionListene
     }
 
     /**
+     * Removes the listener from receiving processing chain selection events.
+     */
+    public void removeProcessingChainSelectionListener(Listener<ProcessingChain> listener)
+    {
+        mSelectedProcessingChainBroadcaster.removeListener(listener);
+    }
+
+    /**
      * Cell renderer for frequency values
      */
     public class FrequencyCellRenderer extends DefaultTableCellRenderer
