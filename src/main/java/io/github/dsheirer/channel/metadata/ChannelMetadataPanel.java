@@ -444,6 +444,8 @@ public class ChannelMetadataPanel extends JPanel implements ListSelectionListene
     {
         ProcessingChain processingChain = mChannelProcessingManager.getProcessingChain(channel);
 
+        int audioModuleCount = 0;
+
         if(processingChain != null)
         {
             for(Module module : processingChain.getModules())
@@ -451,9 +453,13 @@ public class ChannelMetadataPanel extends JPanel implements ListSelectionListene
                 if(module instanceof AbstractAudioModule)
                 {
                     ((AbstractAudioModule)module).setMuted(mute);
+                    audioModuleCount++;
                 }
             }
         }
+
+        mLog.info("Channel {} [ID:{}] {} - found {} audio modules in processing chain",
+            channel.getName(), channel.getChannelID(), mute ? "MUTED" : "UNMUTED", audioModuleCount);
 
         if(mute)
         {
@@ -677,8 +683,10 @@ public class ChannelMetadataPanel extends JPanel implements ListSelectionListene
         @Override
         public void receive(ChannelAndMetadata channelAndMetadata)
         {
+            Channel channel = channelAndMetadata.getChannel();
+
             if(mUserSelectedChannel != null &&
-               mUserSelectedChannel.getChannelID() == channelAndMetadata.getChannel().getChannelID())
+               mUserSelectedChannel.getChannelID() == channel.getChannelID())
             {
                 List<ChannelMetadata> metadata = channelAndMetadata.getChannelMetadata();
 
@@ -692,6 +700,15 @@ public class ChannelMetadataPanel extends JPanel implements ListSelectionListene
                         mTable.getSelectionModel().setSelectionInterval(tableRow, tableRow);
                     }
                 }
+            }
+
+            //Re-apply mute state to channels that were previously muted.  This handles
+            //P25 traffic channels that get new ProcessingChains for each call.
+            if(mMutedChannelIds.contains(channel.getChannelID()))
+            {
+                mLog.info("Re-applying mute to channel {} [ID:{}] after new processing chain created",
+                    channel.getName(), channel.getChannelID());
+                setChannelMuted(channel, true);
             }
         }
     }

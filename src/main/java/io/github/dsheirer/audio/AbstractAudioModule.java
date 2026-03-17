@@ -206,8 +206,16 @@ public abstract class AbstractAudioModule extends Module implements IAudioSegmen
 
         if(muted)
         {
-            //Force close the current segment so AudioChannel stops playing it immediately.
-            //The next segment created via getAudioSegment() will have DO_NOT_MONITOR set.
+            synchronized(this)
+            {
+                //Mark the current segment as DO_NOT_MONITOR so AudioPlaybackManager drops it
+                //on its next processing cycle, then close it so no more audio is added.
+                if(mAudioSegment != null)
+                {
+                    mAudioSegment.monitorPriorityProperty().set(Priority.DO_NOT_MONITOR);
+                }
+            }
+
             closeAudioSegment();
         }
     }
