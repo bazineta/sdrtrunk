@@ -20,6 +20,7 @@
 package io.github.dsheirer.audio;
 
 import io.github.dsheirer.alias.AliasList;
+import io.github.dsheirer.alias.id.priority.Priority;
 import io.github.dsheirer.identifier.IdentifierUpdateListener;
 import io.github.dsheirer.identifier.IdentifierUpdateNotification;
 import io.github.dsheirer.identifier.MutableIdentifierCollection;
@@ -45,6 +46,7 @@ public abstract class AbstractAudioModule extends Module implements IAudioSegmen
     private AudioSegment mAudioSegment;
     private int mAudioSampleCount = 0;
     private boolean mRecordAudioOverride;
+    private volatile boolean mMuted;
     private int mTimeslot;
 
     /**
@@ -121,6 +123,11 @@ public abstract class AbstractAudioModule extends Module implements IAudioSegmen
                     mAudioSegment.recordAudioProperty().set(true);
                 }
 
+                if(mMuted)
+                {
+                    mAudioSegment.monitorPriorityProperty().set(Priority.DO_NOT_MONITOR);
+                }
+
                 if(mAudioSegmentListener != null)
                 {
                     mAudioSegment.incrementConsumerCount();
@@ -178,6 +185,40 @@ public abstract class AbstractAudioModule extends Module implements IAudioSegmen
                 }
             }
         }
+    }
+
+    /**
+     * Sets the mute state for this audio module.  When muted, audio segments produced by this module
+     * will have their monitor priority set to DO_NOT_MONITOR, causing the audio playback manager to
+     * skip playback.  Immediately affects the current audio segment if one exists.
+     * @param muted true to mute, false to unmute
+     */
+    public void setMuted(boolean muted)
+    {
+        mMuted = muted;
+
+        synchronized(this)
+        {
+            if(mAudioSegment != null)
+            {
+                if(muted)
+                {
+                    mAudioSegment.monitorPriorityProperty().set(Priority.DO_NOT_MONITOR);
+                }
+                else
+                {
+                    mAudioSegment.monitorPriorityProperty().set(Priority.DEFAULT_PRIORITY);
+                }
+            }
+        }
+    }
+
+    /**
+     * Indicates if this audio module is currently muted.
+     */
+    public boolean isMuted()
+    {
+        return mMuted;
     }
 
     /**

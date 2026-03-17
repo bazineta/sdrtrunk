@@ -28,6 +28,7 @@ import io.github.dsheirer.module.decode.event.MessageActivityPanel;
 import io.github.dsheirer.playlist.PlaylistManager;
 import io.github.dsheirer.preference.UserPreferences;
 import io.github.dsheirer.settings.SettingsManager;
+import io.github.dsheirer.source.tuner.manager.TunerManager;
 import java.awt.Color;
 import net.miginfocom.swing.MigLayout;
 
@@ -54,12 +55,12 @@ public class NowPlayingPanel extends JPanel
      * messages, events, and spectral view.
      */
     public NowPlayingPanel(PlaylistManager playlistManager, IconModel iconModel, UserPreferences userPreferences,
-                           SettingsManager settingsManager, boolean detailTabsVisible)
+                           SettingsManager settingsManager, TunerManager tunerManager, boolean detailTabsVisible)
     {
         mChannelDetailPanel = new ChannelDetailPanel(playlistManager.getChannelProcessingManager());
         mDecodeEventPanel = new DecodeEventPanel(iconModel, userPreferences, playlistManager.getAliasModel());
         mMessageActivityPanel = new MessageActivityPanel(userPreferences);
-        mChannelMetadataPanel = new ChannelMetadataPanel(playlistManager, iconModel, userPreferences);
+        mChannelMetadataPanel = new ChannelMetadataPanel(playlistManager, iconModel, userPreferences, tunerManager);
         mChannelSpectrumSquelchPanel = new ChannelSpectrumPanel(playlistManager, settingsManager);
         mDetailTabsVisible = detailTabsVisible;
 

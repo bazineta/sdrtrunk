@@ -36,16 +36,30 @@ import io.github.dsheirer.playlist.PlaylistManager;
 import io.github.dsheirer.preference.UserPreferences;
 import io.github.dsheirer.preference.identifier.TalkgroupFormatPreference;
 import io.github.dsheirer.preference.swing.JTableColumnWidthMonitor;
+import io.github.dsheirer.audio.AbstractAudioModule;
+import io.github.dsheirer.module.Module;
 import io.github.dsheirer.sample.Broadcaster;
 import io.github.dsheirer.sample.Listener;
+import io.github.dsheirer.source.Source;
+import io.github.dsheirer.source.config.SourceConfigTuner;
+import io.github.dsheirer.source.config.SourceConfigTunerMultipleFrequency;
+import io.github.dsheirer.source.config.SourceConfiguration;
+import io.github.dsheirer.source.tuner.Tuner;
+import io.github.dsheirer.source.tuner.TunerEvent;
+import io.github.dsheirer.source.tuner.channel.TunerChannelSource;
+import io.github.dsheirer.source.tuner.manager.DiscoveredTuner;
+import io.github.dsheirer.source.tuner.manager.TunerManager;
+import io.github.dsheirer.source.tuner.ui.DiscoveredTunerModel;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.DecimalFormat;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import net.miginfocom.swing.MigLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,16 +90,20 @@ public class ChannelMetadataPanel extends JPanel implements ListSelectionListene
     private Map<State,Color> mForegroundColors = new EnumMap<>(State.class);
     private JTableColumnWidthMonitor mTableColumnMonitor;
     private Channel mUserSelectedChannel;
+    private TunerManager mTunerManager;
+    private Set<Integer> mMutedChannelIds = new HashSet<>();
 
     /**
      * Table view for currently decoding channel metadata
      */
-    public ChannelMetadataPanel(PlaylistManager playlistManager, IconModel iconModel, UserPreferences userPreferences)
+    public ChannelMetadataPanel(PlaylistManager playlistManager, IconModel iconModel, UserPreferences userPreferences,
+                                TunerManager tunerManager)
     {
         mChannelModel = playlistManager.getChannelModel();
         mChannelProcessingManager = playlistManager.getChannelProcessingManager();
         mIconModel = iconModel;
         mUserPreferences = userPreferences;
+        mTunerManager = tunerManager;
         init();
     }
 
@@ -416,6 +434,129 @@ public class ChannelMetadataPanel extends JPanel implements ListSelectionListene
         }
     }
 
+    /**
+     * Toggles mute state for a channel by finding all AbstractAudioModule instances in its
+     * processing chain and setting their muted state.
+     * @param channel to mute/unmute
+     * @param mute true to mute, false to unmute
+     */
+    private void setChannelMuted(Channel channel, boolean mute)
+    {
+        ProcessingChain processingChain = mChannelProcessingManager.getProcessingChain(channel);
+
+        if(processingChain != null)
+        {
+            for(Module module : processingChain.getModules())
+            {
+                if(module instanceof AbstractAudioModule)
+                {
+                    ((AbstractAudioModule)module).setMuted(mute);
+                }
+            }
+        }
+
+        if(mute)
+        {
+            mMutedChannelIds.add(channel.getChannelID());
+        }
+        else
+        {
+            mMutedChannelIds.remove(channel.getChannelID());
+        }
+    }
+
+    /**
+     * Attempts to show the tuner serving a channel in the main spectral display (waterfall).
+     * Finds the tuner by checking the channel's source configuration for a preferred tuner name,
+     * or by matching against the processing chain's current tuner channel source.
+     * @param channel to show in waterfall
+     */
+    private void showChannelInWaterfall(Channel channel)
+    {
+        if(mTunerManager == null)
+        {
+            mLog.warn("TunerManager not available - cannot show channel in waterfall");
+            return;
+        }
+
+        DiscoveredTunerModel discoveredTunerModel = mTunerManager.getDiscoveredTunerModel();
+        Tuner tuner = null;
+
+        // First try: find tuner via preferred tuner name from source config
+        SourceConfiguration sourceConfig = channel.getSourceConfiguration();
+
+        String preferredTunerName = null;
+
+        if(sourceConfig instanceof SourceConfigTuner)
+        {
+            preferredTunerName = ((SourceConfigTuner)sourceConfig).getPreferredTuner();
+        }
+        else if(sourceConfig instanceof SourceConfigTunerMultipleFrequency)
+        {
+            preferredTunerName = ((SourceConfigTunerMultipleFrequency)sourceConfig).getPreferredTuner();
+        }
+
+        if(preferredTunerName != null)
+        {
+            DiscoveredTuner discoveredTuner = mTunerManager.getDiscoveredTuner(preferredTunerName);
+
+            if(discoveredTuner != null && discoveredTuner.hasTuner())
+            {
+                tuner = discoveredTuner.getTuner();
+            }
+        }
+
+        // Second try: find tuner via the processing chain's source
+        if(tuner == null)
+        {
+            ProcessingChain processingChain = mChannelProcessingManager.getProcessingChain(channel);
+
+            if(processingChain != null)
+            {
+                Source source = processingChain.getSource();
+
+                if(source instanceof TunerChannelSource)
+                {
+                    long channelFrequency = ((TunerChannelSource)source).getFrequency();
+
+                    // Find which tuner is serving this frequency
+                    for(DiscoveredTuner discoveredTuner : discoveredTunerModel.getAvailableTuners())
+                    {
+                        if(discoveredTuner.hasTuner())
+                        {
+                            try
+                            {
+                                long tunerFreq = discoveredTuner.getTuner().getTunerController().getFrequency();
+                                double sampleRate = discoveredTuner.getTuner().getTunerController().getSampleRate();
+                                long halfBandwidth = (long)(sampleRate / 2.0);
+
+                                if(channelFrequency >= tunerFreq - halfBandwidth &&
+                                   channelFrequency <= tunerFreq + halfBandwidth)
+                                {
+                                    tuner = discoveredTuner.getTuner();
+                                    break;
+                                }
+                            }
+                            catch(Exception ex)
+                            {
+                                mLog.error("Error checking tuner frequency", ex);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if(tuner != null)
+        {
+            discoveredTunerModel.broadcast(new TunerEvent(tuner, TunerEvent.Event.REQUEST_MAIN_SPECTRAL_DISPLAY));
+        }
+        else
+        {
+            mLog.warn("Unable to find serving tuner for channel: " + channel.getName());
+        }
+    }
+
     public class MouseSupport extends MouseAdapter
     {
         @Override
@@ -444,10 +585,30 @@ public class ChannelMetadataPanel extends JPanel implements ListSelectionListene
 
                             if(channel != null)
                             {
+                                // View/Edit menu item
                                 JMenuItem viewChannel = new JMenuItem("View/Edit: " + channel.getShortTitle());
                                 viewChannel.addActionListener(e2 -> MyEventBus.getGlobalEventBus().post(new ViewChannelRequest(channel)));
                                 popupMenu.add(viewChannel);
                                 populated = true;
+
+                                // Mute/Unmute menu item
+                                boolean isMuted = mMutedChannelIds.contains(channel.getChannelID());
+                                String muteLabel = isMuted ? "Unmute: " + channel.getShortTitle()
+                                                          : "Mute: " + channel.getShortTitle();
+                                JMenuItem muteItem = new JMenuItem(muteLabel);
+                                muteItem.addActionListener(e2 -> setChannelMuted(channel, !isMuted));
+                                popupMenu.add(muteItem);
+
+                                // Show in Waterfall menu item - only show if channel has a tuner source
+                                SourceConfiguration sourceConfig = channel.getSourceConfiguration();
+
+                                if(sourceConfig instanceof SourceConfigTuner ||
+                                   sourceConfig instanceof SourceConfigTunerMultipleFrequency)
+                                {
+                                    JMenuItem waterfallItem = new JMenuItem("Show in Waterfall");
+                                    waterfallItem.addActionListener(e2 -> showChannelInWaterfall(channel));
+                                    popupMenu.add(waterfallItem);
+                                }
                             }
                         }
                     }
