@@ -485,8 +485,6 @@ public class ChannelMetadataPanel extends JPanel implements ListSelectionListene
 
             if(!aliasListAliases.isEmpty())
             {
-                mLog.info("getChannelAliases: using alias list '{}' fallback, found {} aliases",
-                    aliasListName, aliasListAliases.size());
                 return aliasListAliases;
             }
         }
@@ -522,9 +520,6 @@ public class ChannelMetadataPanel extends JPanel implements ListSelectionListene
                 alias.setCallPriority(mute ? Priority.DO_NOT_MONITOR : Priority.DEFAULT_PRIORITY);
             }
 
-            mLog.info("Channel {} {} via alias priority ({} aliases)", channel.getName(),
-                mute ? "MUTED" : "UNMUTED", aliases.size());
-
             //Persist alias change to playlist
             mPlaylistManager.schedulePlaylistSave();
 
@@ -546,8 +541,6 @@ public class ChannelMetadataPanel extends JPanel implements ListSelectionListene
                 mMutedChannelIds.remove(channel.getChannelID());
             }
 
-            mLog.info("Channel {} [ID:{}] {} independently (no alias)", channel.getName(),
-                channel.getChannelID(), mute ? "MUTED" : "UNMUTED");
         }
 
         //Force-close current audio segment for immediate effect on already-playing audio
@@ -710,23 +703,17 @@ public class ChannelMetadataPanel extends JPanel implements ListSelectionListene
 
             if(channelFrequency > 0)
             {
-                mLog.info("Show in Waterfall: channel={} tuner={} frequency={}",
-                    channel.getName(), tuner, channelFrequency);
                 discoveredTunerModel.broadcast(new TunerEvent(tuner,
                     TunerEvent.Event.REQUEST_MAIN_SPECTRAL_DISPLAY, channelFrequency));
             }
             else
             {
-                mLog.warn("Show in Waterfall: channel={} tuner={} but no frequency found",
-                    channel.getName(), tuner);
                 discoveredTunerModel.broadcast(new TunerEvent(tuner,
                     TunerEvent.Event.REQUEST_MAIN_SPECTRAL_DISPLAY));
             }
         }
         else
         {
-            mLog.warn("Show in Waterfall: unable to find serving tuner for channel={} preferredTuner={}",
-                channel.getName(), preferredTunerName);
         }
     }
 
@@ -848,8 +835,6 @@ public class ChannelMetadataPanel extends JPanel implements ListSelectionListene
                     }
                 }
 
-                mLog.info("Re-applied independent mute to channel {} [ID:{}]",
-                    channel.getName(), channel.getChannelID());
             }
         }
     }

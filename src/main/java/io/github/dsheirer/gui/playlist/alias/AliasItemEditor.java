@@ -224,6 +224,35 @@ public class AliasItemEditor extends Editor<Alias>
         }
     }
 
+    /**
+     * Handles AliasPriorityChangedEvent from the global event bus.
+     * When the Now Playing right-click menu mutes/unmutes a channel, the alias priority changes.
+     * This handler refreshes the Listen toggle in the alias editor in real time.
+     */
+    @Subscribe
+    public void aliasPriorityChanged(io.github.dsheirer.channel.metadata.AliasPriorityChangedEvent event)
+    {
+        if(event.getAlias() != null && event.getAlias() == getItem())
+        {
+            Platform.runLater(() -> {
+                int priority = event.getAlias().getPlaybackPriority();
+                boolean canMonitor = (priority != io.github.dsheirer.alias.id.priority.Priority.DO_NOT_MONITOR);
+                getMonitorAudioToggleSwitch().setSelected(canMonitor);
+
+                if(canMonitor && priority != io.github.dsheirer.alias.id.priority.Priority.DEFAULT_PRIORITY)
+                {
+                    getMonitorPriorityComboBox().getSelectionModel().select(priority);
+                }
+                else
+                {
+                    getMonitorPriorityComboBox().getSelectionModel().select(null);
+                }
+
+                modifiedProperty().set(false);
+            });
+        }
+    }
+
     @Override
     public void setItem(Alias alias)
     {
