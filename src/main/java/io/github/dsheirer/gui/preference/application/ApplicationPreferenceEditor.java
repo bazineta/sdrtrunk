@@ -21,19 +21,13 @@ package io.github.dsheirer.gui.preference.application;
 
 import io.github.dsheirer.preference.UserPreferences;
 import io.github.dsheirer.preference.application.ApplicationPreference;
-import javafx.geometry.HPos;
 import javafx.geometry.Insets;
-import javafx.geometry.Orientation;
 import javafx.scene.control.Label;
-import javafx.scene.control.Separator;
 import javafx.scene.control.Spinner;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import org.controlsfx.control.ToggleSwitch;
-
 
 /**
  * Preference settings for application
@@ -41,7 +35,7 @@ import org.controlsfx.control.ToggleSwitch;
 public class ApplicationPreferenceEditor extends HBox
 {
     private ApplicationPreference mApplicationPreference;
-    private GridPane mEditorPane;
+    private VBox mEditorPane;
     private Label mAutoStartTimeoutLabel;
     private Spinner<Integer> mTimeoutSpinner;
     private Label mMemoryLimitLabel;
@@ -66,49 +60,67 @@ public class ApplicationPreferenceEditor extends HBox
         getChildren().add(vbox);
     }
 
-    private GridPane getEditorPane()
+    private VBox getEditorPane()
     {
         if(mEditorPane == null)
         {
-            int row = 0;
-            mEditorPane = new GridPane();
+            mEditorPane = new VBox(20);
             mEditorPane.setMaxWidth(Double.MAX_VALUE);
-            mEditorPane.setVgap(10);
-            mEditorPane.setHgap(3);
             mEditorPane.setPadding(new Insets(10, 10, 10, 10));
 
+            // Card 1: Diagnostic Monitoring
+            VBox diagCard = new VBox(10);
+            diagCard.getStyleClass().add("preferences-card");
             Label monitoringLabel = new Label("Application Health and Diagnostic Monitoring.");
-            mEditorPane.add(monitoringLabel, 0, row, 2, 1);
-            GridPane.setHalignment(getAutomaticDiagnosticMonitoringToggle(), HPos.RIGHT);
-            mEditorPane.add(getAutomaticDiagnosticMonitoringToggle(), 0, ++row);
-            mEditorPane.add(new Label("Enable Diagnostic Monitoring"), 1, row, 2, 1);
+            monitoringLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #333333;");
 
-            Separator separator = new Separator(Orientation.HORIZONTAL);
-            GridPane.setHgrow(separator, Priority.ALWAYS);
-            mEditorPane.add(separator, 0, ++row, 3, 1);
+            HBox diagRow = new HBox(10);
+            diagRow.getStyleClass().add("preferences-card-row");
+            diagRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            Label enableDiagLabel = new Label("Enable Diagnostic Monitoring");
+            javafx.scene.layout.Region spacer1 = new javafx.scene.layout.Region();
+            HBox.setHgrow(spacer1, Priority.ALWAYS);
+            diagRow.getChildren().addAll(enableDiagLabel, spacer1, getAutomaticDiagnosticMonitoringToggle());
 
-            mEditorPane.add(getAutoStartTimeoutLabel(), 0, ++row, 2, 1);
-            GridPane.setHalignment(getTimeoutSpinner(), HPos.RIGHT);
-            mEditorPane.add(getTimeoutSpinner(), 0, ++row);
-            mEditorPane.add(new Label("seconds"), 1, row);
+            diagCard.getChildren().addAll(monitoringLabel, diagRow);
 
-            Separator separator2 = new Separator(Orientation.HORIZONTAL);
-            GridPane.setHgrow(separator2, Priority.ALWAYS);
-            mEditorPane.add(separator2, 0, ++row, 3, 1);
+            // Card 2: Auto Start
+            VBox autoStartCard = new VBox(10);
+            autoStartCard.getStyleClass().add("preferences-card");
 
-            mEditorPane.add(getMemoryLimitLabel(), 0, ++row, 2, 1);
-            GridPane.setHalignment(getMemorySpinner(), HPos.RIGHT);
-            mEditorPane.add(getMemorySpinner(), 0, ++row);
-            mEditorPane.add(new Label("GB"), 1, row);
+            HBox autoStartRow = new HBox(10);
+            autoStartRow.getStyleClass().add("preferences-card-row");
+            autoStartRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            javafx.scene.layout.Region spacer2 = new javafx.scene.layout.Region();
+            HBox.setHgrow(spacer2, Priority.ALWAYS);
 
-            GridPane.setHalignment(getMemoryWarningLabel(), HPos.RIGHT);
-            mEditorPane.add(getMemoryWarningLabel(), 0, ++row, 3, 1);
+            HBox spinnerBox = new HBox(5);
+            spinnerBox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            spinnerBox.getChildren().addAll(getTimeoutSpinner(), new Label("seconds"));
 
-            ColumnConstraints c1 = new ColumnConstraints();
-            c1.setPercentWidth(30);
-            ColumnConstraints c2 = new ColumnConstraints();
-            c2.setHgrow(Priority.ALWAYS);
-            mEditorPane.getColumnConstraints().addAll(c1, c2);
+            autoStartRow.getChildren().addAll(getAutoStartTimeoutLabel(), spacer2, spinnerBox);
+            autoStartCard.getChildren().addAll(autoStartRow);
+
+            // Card 3: Memory Limit
+            VBox memoryCard = new VBox(10);
+            memoryCard.getStyleClass().add("preferences-card");
+
+            HBox memoryRow = new HBox(10);
+            memoryRow.getStyleClass().add("preferences-card-row");
+            memoryRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            javafx.scene.layout.Region spacer3 = new javafx.scene.layout.Region();
+            HBox.setHgrow(spacer3, Priority.ALWAYS);
+
+            HBox memSpinnerBox = new HBox(5);
+            memSpinnerBox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            memSpinnerBox.getChildren().addAll(getMemorySpinner(), new Label("GB"));
+
+            memoryRow.getChildren().addAll(getMemoryLimitLabel(), spacer3, memSpinnerBox);
+
+            getMemoryWarningLabel().setStyle("-fx-text-fill: #8e8e93; -fx-font-size: 12px;");
+            memoryCard.getChildren().addAll(memoryRow, getMemoryWarningLabel());
+
+            mEditorPane.getChildren().addAll(diagCard, autoStartCard, memoryCard);
         }
 
         return mEditorPane;
@@ -118,16 +130,12 @@ public class ApplicationPreferenceEditor extends HBox
     {
         if(mAutoStartTimeoutLabel == null)
         {
-            mAutoStartTimeoutLabel = new Label("Channel Auto-Start Timeout");
+            mAutoStartTimeoutLabel = new Label("Channel Auto-start Disable Timeout");
         }
 
         return mAutoStartTimeoutLabel;
     }
 
-    /**
-     * Spinner to select channel auto-start timeout value in range 0-30 seconds.
-     * @return spinner
-     */
     private Spinner<Integer> getTimeoutSpinner()
     {
         if(mTimeoutSpinner == null)
@@ -180,7 +188,6 @@ public class ApplicationPreferenceEditor extends HBox
         if(mMemoryWarningLabel == null)
         {
             mMemoryWarningLabel = new Label("A restart of SDRTrunk is required for this setting to take effect.");
-            mMemoryWarningLabel.setStyle("-fx-font-style: italic; -fx-text-fill: gray;");
         }
 
         return mMemoryWarningLabel;
