@@ -48,6 +48,8 @@ public class SidebarPanel extends JPanel {
         mToggleBtn.setContentAreaFilled(false);
         mToggleBtn.setBorderPainted(false);
         mToggleBtn.setFocusPainted(false);
+        mToggleBtn.setBorder(javax.swing.BorderFactory.createEmptyBorder(4, 10, 4, 10));
+        mToggleBtn.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
         mToggleBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         mToggleBtn.addActionListener(e -> {
