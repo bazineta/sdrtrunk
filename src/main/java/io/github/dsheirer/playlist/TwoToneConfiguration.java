@@ -17,7 +17,7 @@ import javafx.beans.property.SimpleDoubleProperty;
 public class TwoToneConfiguration
 {
     private StringProperty mAliasProperty = new SimpleStringProperty();
-    private StringProperty mTemplateProperty = new SimpleStringProperty();
+    private StringProperty mTemplateProperty = new SimpleStringProperty("Dispatch Received: {Alias}");
     private StringProperty mZelloChannelProperty = new SimpleStringProperty();
     private double mToneA;
     private double mToneB;
