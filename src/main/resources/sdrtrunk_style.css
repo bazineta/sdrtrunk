@@ -149,3 +149,16 @@
 .preferences-main-area {
     -fx-background-color: #f9f9f9;
 }
+
+.preferences-table .table-row-cell:selected {
+    -fx-background-color: #007aff;
+}
+
+.preferences-table .table-row-cell:selected .text {
+    -fx-fill: #ffffff;
+}
+
+.flat-button:disabled {
+    -fx-opacity: 0.5;
+    -fx-cursor: default;
+}

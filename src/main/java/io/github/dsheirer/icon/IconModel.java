@@ -442,14 +442,14 @@ public class IconModel
             mStandardIcons.add(defaultIcon);
             mStandardIcons.setDefaultIcon(defaultIcon.getName());
 
-            mStandardIcons.add(new Icon("Ambulance", "images/Ambulance.svg"));
+            mStandardIcons.add(new Icon("Ambulance", "images/Ambulance.png"));
             mStandardIcons.add(new Icon("Block Truck", "images/concrete_block_truck.svg"));
             mStandardIcons.add(new Icon("CWID", "images/CWID.svg"));
             mStandardIcons.add(new Icon("Dispatcher", "images/dispatcher.svg"));
             mStandardIcons.add(new Icon("Dump Truck", "images/dump_truck_red.svg"));
-            mStandardIcons.add(new Icon("Fire Truck", "images/fire_truck.svg"));
+            mStandardIcons.add(new Icon("Fire Truck", "images/fire_truck.png"));
             mStandardIcons.add(new Icon("Garbage Truck", "images/garbage_truck.svg"));
-            mStandardIcons.add(new Icon("Loader", "images/loader.svg"));
+            mStandardIcons.add(new Icon("Loader", "images/loader.png"));
             mStandardIcons.add(new Icon("Police", "images/thinlineradio.svg"));
             mStandardIcons.add(new Icon("Propane Truck", "images/propane_truck.svg"));
             mStandardIcons.add(new Icon("Rescue Truck", "images/ambulance (1).svg"));
