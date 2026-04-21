@@ -38,6 +38,7 @@ public enum PreferenceEditorType
     VECTOR_CALIBRATION("Vector Calibration"),
     ICON_MANAGER("Icon Manager"),
     MQTT("MQTT"),
+    AI("AI Settings"),
     DEFAULT("Default");
 
     private String mLabel;

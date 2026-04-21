@@ -193,7 +193,9 @@ public class UserPreferencesEditor extends BorderPane
                 "Source",
                 PreferenceEditorType.SOURCE_TUNERS,
                 "Icons",
-                PreferenceEditorType.ICON_MANAGER
+                PreferenceEditorType.ICON_MANAGER,
+                "AI",
+                PreferenceEditorType.AI
             );
 
             listView.setCellFactory(new Callback<ListView<Object>, ListCell<Object>>() {

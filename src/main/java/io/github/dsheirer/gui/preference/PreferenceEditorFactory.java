@@ -70,6 +70,8 @@ public class PreferenceEditorFactory
                 return new io.github.dsheirer.gui.icon.IconManager(iconModel);
             case MQTT:
                 return new MqttPreferenceEditor(userPreferences);
+            case AI:
+                return new io.github.dsheirer.gui.preference.ai.AIPreferenceEditor(userPreferences);
         }
 
         return null;
