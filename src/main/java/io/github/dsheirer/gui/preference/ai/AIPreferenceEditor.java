@@ -3,8 +3,18 @@ package io.github.dsheirer.gui.preference.ai;
 import io.github.dsheirer.preference.UserPreferences;
 import javafx.geometry.Insets;
 import javafx.scene.control.Label;
+import javafx.scene.control.Button;
 import javafx.scene.control.PasswordField;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
+import org.controlsfx.control.ToggleSwitch;
+import javafx.application.Platform;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 
 public class AIPreferenceEditor extends VBox {
 
@@ -16,6 +26,15 @@ public class AIPreferenceEditor extends VBox {
         setPadding(new Insets(10));
         setSpacing(10);
 
+        ToggleSwitch enableAiSwitch = new ToggleSwitch("Enable AI Features");
+        enableAiSwitch.setSelected(mUserPreferences.getAIPreference().isAIEnabled());
+        enableAiSwitch.selectedProperty().addListener((observable, oldValue, newValue) -> {
+            mUserPreferences.getAIPreference().setAIEnabled(newValue);
+        });
+
+        Label explanationLabel = new Label("If turned on, the application will save the last 5 audio files from each channel on the computer’s hard drive (to allow for review of audio).");
+        explanationLabel.setWrapText(true);
+
         Label apiKeyLabel = new Label("Gemini API Key:");
         PasswordField apiKeyField = new PasswordField();
         apiKeyField.setText(mUserPreferences.getAIPreference().getGeminiApiKey());
@@ -23,6 +42,45 @@ public class AIPreferenceEditor extends VBox {
             mUserPreferences.getAIPreference().setGeminiApiKey(newValue);
         });
 
-        getChildren().addAll(apiKeyLabel, apiKeyField);
+        Button testButton = new Button("Test");
+        Label testResultLabel = new Label("");
+
+        testButton.setOnAction(e -> {
+            testResultLabel.setText("Testing...");
+            String apiKey = apiKeyField.getText();
+            if (apiKey == null || apiKey.trim().isEmpty()) {
+                testResultLabel.setText("Please enter an API key first.");
+                return;
+            }
+
+            HttpClient client = HttpClient.newBuilder()
+                    .version(HttpClient.Version.HTTP_2)
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models?key=" + apiKey.trim()))
+                    .GET()
+                    .build();
+
+            client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenAccept(response -> {
+                        Platform.runLater(() -> {
+                            if (response.statusCode() == 200) {
+                                testResultLabel.setText("Test passed");
+                            } else {
+                                testResultLabel.setText("Test failed: " + response.statusCode());
+                            }
+                        });
+                    }).exceptionally(ex -> {
+                        Platform.runLater(() -> testResultLabel.setText("Test failed: " + ex.getMessage()));
+                        return null;
+                    });
+        });
+
+        HBox apiKeyBox = new HBox(10, apiKeyLabel, apiKeyField, testButton, testResultLabel);
+        apiKeyBox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        getChildren().addAll(enableAiSwitch, explanationLabel, apiKeyBox);
     }
 }
