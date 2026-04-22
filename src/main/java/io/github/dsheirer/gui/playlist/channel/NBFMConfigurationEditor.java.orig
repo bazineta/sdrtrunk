@@ -46,20 +46,12 @@ import io.github.dsheirer.eventbus.MyEventBus;
 import io.github.dsheirer.gui.preference.ViewUserPreferenceEditorRequest;
 import io.github.dsheirer.gui.preference.PreferenceEditorType;
 import javafx.scene.control.Hyperlink;
-import io.github.dsheirer.eventbus.MyEventBus;
-import io.github.dsheirer.gui.preference.ViewUserPreferenceEditorRequest;
-import io.github.dsheirer.gui.preference.PreferenceEditorType;
-import javafx.scene.control.Hyperlink;
 import java.util.ArrayList;
 import java.util.List;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener;
 import javafx.geometry.HPos;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.DialogPane;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.geometry.Insets;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -143,7 +135,6 @@ public class NBFMConfigurationEditor extends ChannelConfigurationEditor
     private javafx.scene.control.Button mAnalyzeButton;
     private Label mAnalyzeStatusLabel;
     private Timeline mAiPollingTimeline;
-    private Hyperlink mAnalyzeStatusLink;
 
     private boolean mLoadingConfiguration = false;
 
@@ -439,15 +430,6 @@ public class NBFMConfigurationEditor extends ChannelConfigurationEditor
             GridPane.setConstraints(mAnalyzeStatusLabel, 1, 0);
             analyzePane.getChildren().add(mAnalyzeStatusLabel);
 
-            mAnalyzeStatusLink = new Hyperlink("AI features are turned off. Click here to enable.");
-            mAnalyzeStatusLink.setOnAction(ev -> {
-                MyEventBus.getGlobalEventBus().post(new ViewUserPreferenceEditorRequest(PreferenceEditorType.AI));
-            });
-            mAnalyzeStatusLink.setVisible(false);
-            mAnalyzeStatusLink.setManaged(false);
-            GridPane.setConstraints(mAnalyzeStatusLink, 1, 0);
-            analyzePane.getChildren().add(mAnalyzeStatusLink);
-
             contentBox.getChildren().add(analyzePane);
             contentBox.getChildren().add(new Separator());
 
@@ -481,31 +463,19 @@ public class NBFMConfigurationEditor extends ChannelConfigurationEditor
             mAudioFiltersPane.setContent(contentBox);
 
             mAiPollingTimeline = new Timeline(new KeyFrame(Duration.seconds(2), e -> {
-                if (mUserPreferences.getAIPreference().isAIEnabled()) {
-                    mAnalyzeStatusLabel.setVisible(true);
-                    mAnalyzeStatusLabel.setManaged(true);
-                    mAnalyzeStatusLink.setVisible(false);
-                    mAnalyzeStatusLink.setManaged(false);
-                    if (getItem() != null && getItem().getName() != null) {
-                        int count = io.github.dsheirer.module.decode.nbfm.ai.AudioBufferManager.getBufferedEventCount(mUserPreferences, getItem().getName());
-                        if (count < 5) {
-                            mAnalyzeButton.setDisable(true);
-                            mAnalyzeStatusLabel.setText(count + "/5 transmissions. At least 5 required prior to using AI enhance.");
-                            mAnalyzeStatusLabel.setStyle("-fx-text-fill: #666;");
-                        } else {
-                            if (mSquelchEnabledSwitch.isSelected()) {
-                                mAnalyzeButton.setDisable(false);
-                            }
-                            mAnalyzeStatusLabel.setText("Ready for AI optimization.");
-                            mAnalyzeStatusLabel.setStyle("-fx-text-fill: #009900;");
+                if (getItem() != null && getItem().getName() != null) {
+                    int count = io.github.dsheirer.module.decode.nbfm.ai.AudioBufferManager.getBufferedEventCount(mUserPreferences, getItem().getName());
+                    if (count < 5) {
+                        mAnalyzeButton.setDisable(true);
+                        mAnalyzeStatusLabel.setText(count + "/5 transmissions. At least 5 required prior to using AI enhance.");
+                        mAnalyzeStatusLabel.setStyle("-fx-text-fill: #666;");
+                    } else {
+                        if (mSquelchEnabledSwitch.isSelected()) {
+                            mAnalyzeButton.setDisable(false);
                         }
+                        mAnalyzeStatusLabel.setText("Ready for AI optimization.");
+                        mAnalyzeStatusLabel.setStyle("-fx-text-fill: #009900;");
                     }
-                } else {
-                    mAnalyzeButton.setDisable(true);
-                    mAnalyzeStatusLabel.setVisible(false);
-                    mAnalyzeStatusLabel.setManaged(false);
-                    mAnalyzeStatusLink.setVisible(true);
-                    mAnalyzeStatusLink.setManaged(true);
                 }
             }));
             mAiPollingTimeline.setCycleCount(Timeline.INDEFINITE);
@@ -1552,11 +1522,15 @@ public class NBFMConfigurationEditor extends ChannelConfigurationEditor
                     io.github.dsheirer.module.decode.nbfm.ai.AudioBufferManager bufferManager = new io.github.dsheirer.module.decode.nbfm.ai.AudioBufferManager(mUserPreferences, getItem().getName());
                     java.util.List<java.util.List<float[]>> events = bufferManager.getBufferedEvents();
 
-                    io.github.dsheirer.module.decode.nbfm.ai.AIAnalysisResult result = optimizer.analyze(config, events);
+                    optimizer.optimize(config, events);
                     javafx.application.Platform.runLater(() -> {
-                        showAIAnalysisDialog(config, result);
-                    });
+                        mAnalyzeStatusLabel.setText("\u2705 AI Optimization Applied.");
+                        mAnalyzeStatusLabel.setStyle("-fx-text-fill: #009900; -fx-font-weight: bold;");
+                        mAnalyzeButton.setText("AI Enhance");
+                        loadAudioFilterConfiguration(config);
 
+                        modifiedProperty().set(true);
+                    });
                 } catch (Exception e) {
                     javafx.application.Platform.runLater(() -> {
                         mAnalyzeStatusLabel.setText("\u26A0\uFE0F Error: " + e.getMessage());
@@ -1567,132 +1541,7 @@ public class NBFMConfigurationEditor extends ChannelConfigurationEditor
             }).start();
         }
     }
-    private void showAIAnalysisDialog(io.github.dsheirer.module.decode.nbfm.DecodeConfigNBFM config, io.github.dsheirer.module.decode.nbfm.ai.AIAnalysisResult result) {
-        javafx.scene.control.Dialog<Boolean> dialog = new javafx.scene.control.Dialog<>();
-        dialog.setTitle("AI Audio Optimization");
-        dialog.setHeaderText("AI Analysis Complete");
-
-        javafx.scene.control.DialogPane dialogPane = dialog.getDialogPane();
-        javafx.scene.control.ButtonType saveButtonType = new javafx.scene.control.ButtonType("Save", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
-        javafx.scene.control.ButtonType discardButtonType = new javafx.scene.control.ButtonType("Discard", javafx.scene.control.ButtonBar.ButtonData.CANCEL_CLOSE);
-        dialogPane.getButtonTypes().addAll(saveButtonType, discardButtonType);
-
-        javafx.scene.layout.VBox content = new javafx.scene.layout.VBox(10);
-        content.setPadding(new javafx.geometry.Insets(10));
-
-        content.getChildren().add(new javafx.scene.control.Label("Issues Found: " + result.getIssuesFound()));
-        content.getChildren().add(new javafx.scene.control.Label("Improvements: " + result.getImprovements()));
-        content.getChildren().add(new javafx.scene.control.Label("Explanation: " + result.getExplanation()));
-        content.getChildren().add(new javafx.scene.control.Separator());
-        content.getChildren().add(new javafx.scene.control.Label("Recommended Settings:"));
-
-        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
-        grid.setHgap(10);
-        grid.setVgap(5);
-
-        javafx.scene.control.CheckBox cbHissReduction = new javafx.scene.control.CheckBox("Hiss Reduction Enabled");
-        cbHissReduction.setSelected(result.isHissReductionEnabled());
-        grid.add(cbHissReduction, 0, 0);
-
-        javafx.scene.control.TextField tfHissReductionDb = new javafx.scene.control.TextField(String.valueOf(result.getHissReductionDb()));
-        grid.add(new javafx.scene.control.Label("Hiss Reduction dB:"), 0, 1);
-        grid.add(tfHissReductionDb, 1, 1);
-
-        javafx.scene.control.TextField tfHissReductionCorner = new javafx.scene.control.TextField(String.valueOf(result.getHissReductionCorner()));
-        grid.add(new javafx.scene.control.Label("Hiss Reduction Corner:"), 0, 2);
-        grid.add(tfHissReductionCorner, 1, 2);
-
-        javafx.scene.control.CheckBox cbLowPass = new javafx.scene.control.CheckBox("Low Pass Enabled");
-        cbLowPass.setSelected(result.isLowPassEnabled());
-        grid.add(cbLowPass, 0, 3);
-
-        javafx.scene.control.TextField tfLowPassCutoff = new javafx.scene.control.TextField(String.valueOf(result.getLowPassCutoff()));
-        grid.add(new javafx.scene.control.Label("Low Pass Cutoff:"), 0, 4);
-        grid.add(tfLowPassCutoff, 1, 4);
-
-        javafx.scene.control.CheckBox cbDeemphasis = new javafx.scene.control.CheckBox("De-emphasis Enabled");
-        cbDeemphasis.setSelected(result.isDeemphasisEnabled());
-        grid.add(cbDeemphasis, 0, 5);
-
-        javafx.scene.control.CheckBox cbBassBoost = new javafx.scene.control.CheckBox("Bass Boost Enabled");
-        cbBassBoost.setSelected(result.isBassBoostEnabled());
-        grid.add(cbBassBoost, 0, 6);
-
-        javafx.scene.control.TextField tfBassBoostDb = new javafx.scene.control.TextField(String.valueOf(result.getBassBoostDb()));
-        grid.add(new javafx.scene.control.Label("Bass Boost dB:"), 0, 7);
-        grid.add(tfBassBoostDb, 1, 7);
-
-        javafx.scene.control.CheckBox cbAgc = new javafx.scene.control.CheckBox("AGC Enabled");
-        cbAgc.setSelected(result.isAgcEnabled());
-        grid.add(cbAgc, 0, 8);
-
-        javafx.scene.control.TextField tfAgcTarget = new javafx.scene.control.TextField(String.valueOf(result.getAgcTargetLevel()));
-        grid.add(new javafx.scene.control.Label("AGC Target Level:"), 0, 9);
-        grid.add(tfAgcTarget, 1, 9);
-
-        javafx.scene.control.CheckBox cbNoiseGate = new javafx.scene.control.CheckBox("Noise Gate Enabled");
-        cbNoiseGate.setSelected(result.isNoiseGateEnabled());
-        grid.add(cbNoiseGate, 0, 10);
-
-        javafx.scene.control.TextField tfNoiseGateThreshold = new javafx.scene.control.TextField(String.valueOf(result.getNoiseGateThreshold()));
-        grid.add(new javafx.scene.control.Label("Noise Gate Threshold:"), 0, 11);
-        grid.add(tfNoiseGateThreshold, 1, 11);
-
-        javafx.scene.control.TextField tfNoiseGateReduction = new javafx.scene.control.TextField(String.valueOf(result.getNoiseGateReduction()));
-        grid.add(new javafx.scene.control.Label("Noise Gate Reduction:"), 0, 12);
-        grid.add(tfNoiseGateReduction, 1, 12);
-
-        javafx.scene.control.TextField tfAgcMaxGain = new javafx.scene.control.TextField(String.valueOf(result.getAgcMaxGain()));
-        grid.add(new javafx.scene.control.Label("AGC Max Gain:"), 0, 13);
-        grid.add(tfAgcMaxGain, 1, 13);
-
-        content.getChildren().add(grid);
-        dialogPane.setContent(content);
-
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == saveButtonType) {
-                return true;
-            }
-            return false;
-        });
-
-        java.util.Optional<Boolean> resultOpt = dialog.showAndWait();
-
-        if (resultOpt.isPresent() && resultOpt.get()) {
-            try {
-                config.setHissReductionEnabled(cbHissReduction.isSelected());
-                config.setHissReductionDb(Float.parseFloat(tfHissReductionDb.getText()));
-                config.setHissReductionCornerHz(Double.parseDouble(tfHissReductionCorner.getText()));
-                config.setLowPassEnabled(cbLowPass.isSelected());
-                config.setLowPassCutoff(Double.parseDouble(tfLowPassCutoff.getText()));
-                config.setDeemphasisEnabled(cbDeemphasis.isSelected());
-                config.setBassBoostEnabled(cbBassBoost.isSelected());
-                config.setBassBoostDb(Float.parseFloat(tfBassBoostDb.getText()));
-                config.setAgcEnabled(cbAgc.isSelected());
-                config.setAgcTargetLevel(Float.parseFloat(tfAgcTarget.getText()));
-                config.setNoiseGateEnabled(cbNoiseGate.isSelected());
-                config.setNoiseGateThreshold(Float.parseFloat(tfNoiseGateThreshold.getText()));
-                config.setNoiseGateReduction(Float.parseFloat(tfNoiseGateReduction.getText()));
-                config.setAgcMaxGain(Float.parseFloat(tfAgcMaxGain.getText()));
-
-                mAnalyzeStatusLabel.setText("\u2705 AI Optimization Applied.");
-                mAnalyzeStatusLabel.setStyle("-fx-text-fill: #009900; -fx-font-weight: bold;");
-                mAnalyzeButton.setText("AI Enhance");
-                loadAudioFilterConfiguration(config);
-
-                modifiedProperty().set(true);
-            } catch (NumberFormatException ex) {
-                mAnalyzeStatusLabel.setText("\u26A0\uFE0F Error: Invalid number format in settings.");
-                mAnalyzeStatusLabel.setStyle("-fx-text-fill: #cc0000;");
-                mAnalyzeButton.setText("AI Enhance");
-            }
-        } else {
-            mAnalyzeStatusLabel.setText("Optimization discarded.");
-            mAnalyzeStatusLabel.setStyle("-fx-text-fill: #666;");
-            mAnalyzeButton.setText("AI Enhance");
-        }
-    }
-
+    @Override
     protected void setEventLogConfiguration(EventLogConfiguration config)
     {
         getEventLogConfigurationEditor().setItem(config);
