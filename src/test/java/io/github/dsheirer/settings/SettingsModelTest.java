@@ -12,12 +12,12 @@ public class SettingsModelTest {
         ColorSetting.ColorSettingName name = ColorSetting.ColorSettingName.SPECTRUM_LINE;
 
         Color initialColor = model.getColorSetting(name).getColor();
-        assertEquals(name.getDefaultColor(), initialColor);
+        assertEquals(new Color(name.getDefaultColor().getRed(), name.getDefaultColor().getGreen(), name.getDefaultColor().getBlue(), name.getTranslucency()), initialColor);
 
         Color newColor = Color.RED;
         model.setColorSetting(name, newColor);
 
-        assertEquals(newColor, model.getColorSetting(name).getColor());
+        assertEquals(new Color(newColor.getRed(), newColor.getGreen(), newColor.getBlue(), name.getTranslucency()), model.getColorSetting(name).getColor());
     }
 
     @Test
