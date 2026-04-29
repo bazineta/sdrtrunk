@@ -546,6 +546,7 @@ public class JavaFxWindowManager extends Application
     private JFXPanel mIconManagerPanel;
     private JFXPanel mUserPreferencesEditorPanel;
     private JFXPanel mRecordingViewerPanel;
+    private JFXPanel mLogsPanel;
 
     public JFXPanel getPlaylistEditorPanel() {
         if (mPlaylistEditorPanel == null) {
@@ -578,6 +579,17 @@ public class JavaFxWindowManager extends Application
             });
         }
         return mUserPreferencesEditorPanel;
+    }
+
+    public JFXPanel getLogsPanel() {
+        if (mLogsPanel == null) {
+            mLogsPanel = new JFXPanel();
+            execute(() -> {
+                Scene scene = new Scene(new LogsPanel(mUserPreferences), 1000, 750);
+                mLogsPanel.setScene(scene);
+            });
+        }
+        return mLogsPanel;
     }
 
     public JFXPanel getRecordingViewerPanel() {

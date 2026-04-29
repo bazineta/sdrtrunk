@@ -1,156 +1,174 @@
 package io.github.dsheirer.gui;
 
 import io.github.dsheirer.gui.log.LogFile;
-import io.github.dsheirer.gui.log.LogFileTableModel;
 import io.github.dsheirer.module.log.ai.AILogAnalyzer;
 import io.github.dsheirer.preference.UserPreferences;
+import javafx.application.Platform;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.MouseButton;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.TableRowSorter;
-import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-
-public class LogsPanel extends JPanel {
+public class LogsPanel extends BorderPane {
     private static final Logger mLog = LoggerFactory.getLogger(LogsPanel.class);
 
     private java.util.Timer mHealthTimer;
-
     private UserPreferences mUserPreferences;
 
-    private LogFileTableModel mAppListModel;
-    private JTable mAppTable;
-    private TableRowSorter<LogFileTableModel> mAppSorter;
+    private ObservableList<LogFile> mAppListModel = FXCollections.observableArrayList();
+    private TableView<LogFile> mAppTable;
+    private FilteredList<LogFile> mAppFiltered;
 
-    private LogFileTableModel mEventListModel;
-    private JTable mEventTable;
-    private TableRowSorter<LogFileTableModel> mEventSorter;
+    private ObservableList<LogFile> mEventListModel = FXCollections.observableArrayList();
+    private TableView<LogFile> mEventTable;
+    private FilteredList<LogFile> mEventFiltered;
 
-    private LogFileTableModel mTwoToneListModel;
-    private JTable mTwoToneTable;
-    private TableRowSorter<LogFileTableModel> mTwoToneSorter;
+    private ObservableList<LogFile> mTwoToneListModel = FXCollections.observableArrayList();
+    private TableView<LogFile> mTwoToneTable;
+    private FilteredList<LogFile> mTwoToneFiltered;
 
-    private JTextField mAppSearchField;
-    private JTextField mEventSearchField;
-    private JTextField mTwoToneSearchField;
-    private JTabbedPane mTabbedPane;
-    private JButton mAnalyzeBtn;
+    private TextField mAppSearchField;
+    private TextField mEventSearchField;
+    private TextField mTwoToneSearchField;
 
-
+    private TabPane mTabbedPane;
+    private Button mAnalyzeBtn;
 
     public LogsPanel(UserPreferences userPreferences) {
         mUserPreferences = userPreferences;
 
-        setLayout(new BorderLayout());
+        // Apply HIG-like styling
+        setStyle("-fx-background-color: #F5F5F7;");
 
-        mAppListModel = new LogFileTableModel();
-        mAppTable = createLogTable(mAppListModel);
-        mAppSorter = new TableRowSorter<>(mAppListModel);
-        mAppTable.setRowSorter(mAppSorter);
+        mAppFiltered = new FilteredList<>(mAppListModel, p -> true);
+        mAppTable = createLogTable(mAppFiltered);
+        mAppSearchField = createSearchField(mAppFiltered);
 
-        mEventListModel = new LogFileTableModel();
-        mEventTable = createLogTable(mEventListModel);
-        mEventSorter = new TableRowSorter<>(mEventListModel);
-        mEventTable.setRowSorter(mEventSorter);
+        mEventFiltered = new FilteredList<>(mEventListModel, p -> true);
+        mEventTable = createLogTable(mEventFiltered);
+        mEventSearchField = createSearchField(mEventFiltered);
 
-        mTwoToneListModel = new LogFileTableModel();
-        mTwoToneTable = createLogTable(mTwoToneListModel);
-        mTwoToneSorter = new TableRowSorter<>(mTwoToneListModel);
-        mTwoToneTable.setRowSorter(mTwoToneSorter);
+        mTwoToneFiltered = new FilteredList<>(mTwoToneListModel, p -> true);
+        mTwoToneTable = createLogTable(mTwoToneFiltered);
+        mTwoToneSearchField = createSearchField(mTwoToneFiltered);
 
         loadLogs();
 
-        mAppSearchField = createSearchField(mAppSorter);
-        mEventSearchField = createSearchField(mEventSorter);
-        mTwoToneSearchField = createSearchField(mTwoToneSorter);
+        mTabbedPane = new TabPane();
+        mTabbedPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        mTabbedPane = new JTabbedPane();
+        // System Health Tab
         if (mUserPreferences.getAIPreference().isAIEnabled() && mUserPreferences.getAIPreference().isSystemHealthAdvisorEnabled()) {
-            JPanel performancePanel = new JPanel(new BorderLayout());
-            JLabel performanceLabel = new JLabel("<html><div style='text-align: center; padding: 20px;'><h1>System Health & Performance Advisor</h1><p>Status: Monitoring...</p><p>CPU Usage: OK</p><p>Memory Usage: OK</p><br><p><i>Optimization Suggestions:</i></p><p>No suggestions at this time.</p></div></html>");
-            performanceLabel.setHorizontalAlignment(SwingConstants.CENTER);
-            performancePanel.add(performanceLabel, BorderLayout.CENTER);
-            mTabbedPane.addTab("System Health", performancePanel);
+            VBox performancePanel = new VBox();
+            performancePanel.setAlignment(Pos.CENTER);
+            performancePanel.setPadding(new Insets(30));
+            performancePanel.setSpacing(10);
+
+            Label titleLabel = new Label("System Health & Performance Advisor");
+            titleLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
+
+            Label performanceLabel = new Label("Status: Monitoring...\nCPU Usage: OK\nMemory Usage: OK\n\nOptimization Suggestions:\nNo suggestions at this time.");
+            performanceLabel.setWrapText(true);
+            performanceLabel.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+
+            performancePanel.getChildren().addAll(titleLabel, performanceLabel);
+
+            Tab healthTab = new Tab("System Health", performancePanel);
+            mTabbedPane.getTabs().add(healthTab);
 
             mHealthTimer = new java.util.Timer(true);
             mHealthTimer.scheduleAtFixedRate(new SystemHealthAdvisorTask(performanceLabel), 0, 5000);
         }
-        mTabbedPane.addTab("Application Logs", createTabPanel(mAppTable, mAppSearchField));
-        mTabbedPane.addTab("Channel Event Logs", createTabPanel(mEventTable, mEventSearchField));
-        mTabbedPane.addTab("Two-Tone Logs", createTabPanel(mTwoToneTable, mTwoToneSearchField));
 
-        JButton refreshBtn = new JButton("Refresh");
-        refreshBtn.addActionListener(e -> loadLogs());
+        mTabbedPane.getTabs().add(new Tab("Application Logs", createTabPanel(mAppTable, mAppSearchField)));
+        mTabbedPane.getTabs().add(new Tab("Channel Event Logs", createTabPanel(mEventTable, mEventSearchField)));
+        mTabbedPane.getTabs().add(new Tab("Two-Tone Logs", createTabPanel(mTwoToneTable, mTwoToneSearchField)));
 
-                mAnalyzeBtn = new JButton("Analyze Error");
-        mAnalyzeBtn.addActionListener(e -> analyzeSelectedLog());
+        Button refreshBtn = new Button("Refresh");
+        refreshBtn.setOnAction(e -> loadLogs());
+
+        mAnalyzeBtn = new Button("Analyze Error");
+        mAnalyzeBtn.setOnAction(e -> analyzeSelectedLog());
+        // HIG primary action styling
+        mAnalyzeBtn.setStyle("-fx-base: #007AFF; -fx-text-fill: white; -fx-background-radius: 5;");
 
         updateAnalyzeButtonState();
-        mAppTable.getSelectionModel().addListSelectionListener(e -> updateAnalyzeButtonState());
-        mEventTable.getSelectionModel().addListSelectionListener(e -> updateAnalyzeButtonState());
-        mTwoToneTable.getSelectionModel().addListSelectionListener(e -> updateAnalyzeButtonState());
-        mTabbedPane.addChangeListener(e -> updateAnalyzeButtonState());
+        mAppTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> updateAnalyzeButtonState());
+        mEventTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> updateAnalyzeButtonState());
+        mTwoToneTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> updateAnalyzeButtonState());
+        mTabbedPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> updateAnalyzeButtonState());
 
-        JPanel btnPanel = new JPanel();
-        btnPanel.add(refreshBtn);
-        btnPanel.add(mAnalyzeBtn);
+        HBox btnPanel = new HBox(10);
+        btnPanel.setPadding(new Insets(10));
+        btnPanel.setAlignment(Pos.CENTER_RIGHT);
+        btnPanel.getChildren().addAll(refreshBtn, mAnalyzeBtn);
 
-        add(new JLabel("Double-click a log file to open it in your text editor", JLabel.CENTER), BorderLayout.NORTH);
-        add(mTabbedPane, BorderLayout.CENTER);
-        add(btnPanel, BorderLayout.SOUTH);
+        Label instructionsLabel = new Label("Double-click a log file to open it in your text editor");
+        instructionsLabel.setPadding(new Insets(10));
+        instructionsLabel.setAlignment(Pos.CENTER);
+        instructionsLabel.setMaxWidth(Double.MAX_VALUE);
+        instructionsLabel.setStyle("-fx-text-fill: #8E8E93;"); // HIG secondary label color
+
+        setTop(instructionsLabel);
+        setCenter(mTabbedPane);
+        setBottom(btnPanel);
     }
-
 
     private void updateAnalyzeButtonState() {
         boolean aiEnabled = mUserPreferences.getAIPreference().isAIEnabled() && mUserPreferences.getAIPreference().isAILogAnalysisEnabled();
         boolean hasApiKey = !mUserPreferences.getAIPreference().getGeminiApiKey().trim().isEmpty();
         boolean hasSelection = getSelectedLogFile() != null;
 
-        mAnalyzeBtn.setEnabled(aiEnabled && hasApiKey && hasSelection);
+        mAnalyzeBtn.setDisable(!(aiEnabled && hasApiKey && hasSelection));
 
         if (!aiEnabled) {
-            mAnalyzeBtn.setToolTipText("Enable AI and Log Analysis in User Preferences.");
+            mAnalyzeBtn.setTooltip(new Tooltip("Enable AI and Log Analysis in User Preferences."));
         } else if (!hasApiKey) {
-            mAnalyzeBtn.setToolTipText("Gemini API Key is missing in User Preferences.");
+            mAnalyzeBtn.setTooltip(new Tooltip("Gemini API Key is missing in User Preferences."));
         } else if (!hasSelection) {
-            mAnalyzeBtn.setToolTipText("Select a log file to analyze.");
+            mAnalyzeBtn.setTooltip(new Tooltip("Select a log file to analyze."));
         } else {
-            mAnalyzeBtn.setToolTipText("Analyze selected log file using AI.");
+            mAnalyzeBtn.setTooltip(new Tooltip("Analyze selected log file using AI."));
         }
     }
 
     private LogFile getSelectedLogFile() {
-        int selectedIndex = mTabbedPane.getSelectedIndex();
-        if (selectedIndex == 0) {
-            return getLogFileFromTable(mAppTable, mAppListModel);
-        } else if (selectedIndex == 1) {
-            return getLogFileFromTable(mEventTable, mEventListModel);
-        } else if (selectedIndex == 2) {
-            return getLogFileFromTable(mTwoToneTable, mTwoToneListModel);
-        }
-        return null;
-    }
-
-    private LogFile getLogFileFromTable(JTable table, LogFileTableModel model) {
-        int viewRow = table.getSelectedRow();
-        if (viewRow != -1) {
-            int modelRow = table.convertRowIndexToModel(viewRow);
-            return model.getLogFileAt(modelRow);
+        Tab selectedTab = mTabbedPane.getSelectionModel().getSelectedItem();
+        if (selectedTab != null) {
+            String tabText = selectedTab.getText();
+            if ("Application Logs".equals(tabText)) {
+                return mAppTable.getSelectionModel().getSelectedItem();
+            } else if ("Channel Event Logs".equals(tabText)) {
+                return mEventTable.getSelectionModel().getSelectedItem();
+            } else if ("Two-Tone Logs".equals(tabText)) {
+                return mTwoToneTable.getSelectionModel().getSelectedItem();
+            }
         }
         return null;
     }
@@ -161,118 +179,164 @@ public class LogsPanel extends JPanel {
             return;
         }
 
-        mAnalyzeBtn.setEnabled(false);
+        mAnalyzeBtn.setDisable(true);
         mAnalyzeBtn.setText("Analyzing...");
 
-        SwingWorker<String, Void> worker = new SwingWorker<>() {
-            @Override
-            protected String doInBackground() throws Exception {
-                // Read last N lines or all if small
-                String content;
-                try {
-                    List<String> lines = Files.readAllLines(logFile.getFile().toPath());
-                    int maxLines = 500; // avoid huge payload
-                    if (lines.size() > maxLines) {
-                        lines = lines.subList(lines.size() - maxLines, lines.size());
-                    }
-                    content = String.join("\n", lines);
-                } catch (IOException e) {
-                    return "Error reading log file: " + e.getMessage();
+        Thread worker = new Thread(() -> {
+            String content;
+            try {
+                List<String> lines = Files.readAllLines(logFile.getFile().toPath());
+                int maxLines = 500;
+                if (lines.size() > maxLines) {
+                    lines = lines.subList(lines.size() - maxLines, lines.size());
                 }
+                content = String.join("\n", lines);
+            } catch (IOException e) {
+                showError("Error reading log file: " + e.getMessage());
+                resetAnalyzeButton();
+                return;
+            }
 
+            try {
                 AILogAnalyzer analyzer = new AILogAnalyzer(mUserPreferences);
-                return analyzer.analyze(content);
-            }
+                String result = analyzer.analyze(content);
 
-            @Override
-            protected void done() {
-                try {
-                    String result = get();
-                    JTextArea textArea = new JTextArea(result);
+                Platform.runLater(() -> {
+                    TextArea textArea = new TextArea(result);
                     textArea.setEditable(false);
-                    textArea.setLineWrap(true);
-                    textArea.setWrapStyleWord(true);
-                    JScrollPane scrollPane = new JScrollPane(textArea);
-                    scrollPane.setPreferredSize(new Dimension(600, 400));
-                    JOptionPane.showMessageDialog(LogsPanel.this, scrollPane, "AI Log Analysis", JOptionPane.INFORMATION_MESSAGE);
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(LogsPanel.this, "Error analyzing log:\n" + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                } finally {
-                    mAnalyzeBtn.setText("Analyze Error");
-                    updateAnalyzeButtonState();
-                }
+                    textArea.setWrapText(true);
+                    textArea.setPrefSize(600, 400);
+
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("AI Log Analysis");
+                    alert.setHeaderText(null);
+                    alert.getDialogPane().setContent(textArea);
+                    alert.showAndWait();
+
+                    resetAnalyzeButton();
+                });
+            } catch (Exception ex) {
+                showError("Error analyzing log:\n" + ex.getMessage());
+                resetAnalyzeButton();
             }
-        };
-        worker.execute();
+        });
+        worker.setDaemon(true);
+        worker.start();
     }
 
-    private JTable createLogTable(LogFileTableModel model) {
-        JTable table = new JTable(model);
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.setFillsViewportHeight(true);
+    private void resetAnalyzeButton() {
+        Platform.runLater(() -> {
+            mAnalyzeBtn.setText("Analyze Error");
+            updateAnalyzeButtonState();
+        });
+    }
 
-        // Setup date column renderer
-        table.setDefaultRenderer(LocalDate.class, new DefaultTableCellRenderer() {
-            private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private void showError(String message) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error");
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.showAndWait();
+        });
+    }
 
+    private TableView<LogFile> createLogTable(FilteredList<LogFile> filteredData) {
+        TableView<LogFile> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        SortedList<LogFile> sortedData = new SortedList<>(filteredData);
+        sortedData.comparatorProperty().bind(table.comparatorProperty());
+        table.setItems(sortedData);
+
+        TableColumn<LogFile, LocalDate> dateCol = new TableColumn<>("Date");
+        dateCol.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getDate()));
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        dateCol.setCellFactory(column -> new TableCell<LogFile, LocalDate>() {
             @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                if (value instanceof LocalDate) {
-                    setText(((LocalDate) value).format(formatter));
+            protected void updateItem(LocalDate item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(formatter.format(item));
                 }
-                return this;
+            }
+        });
+        dateCol.setPrefWidth(120);
+        dateCol.setMaxWidth(150);
+        dateCol.setMinWidth(100);
+
+        TableColumn<LogFile, String> nameCol = new TableColumn<>("Name");
+        nameCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getName()));
+
+        table.getColumns().addAll(dateCol, nameCol);
+
+        table.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
+                LogFile selected = table.getSelectionModel().getSelectedItem();
+                if (selected != null) {
+                    openLog(selected.getFile());
+                }
             }
         });
 
-        table.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2 && table.getSelectedRow() != -1) {
-                    int viewRow = table.getSelectedRow();
-                    int modelRow = table.convertRowIndexToModel(viewRow);
-                    LogFile logFile = model.getLogFileAt(modelRow);
-                    openLog(logFile.getFile());
-                }
-            }
-        });
+        // Set row height for HIG Clarity principle
+        table.setFixedCellSize(30);
 
         return table;
     }
 
-    private JPanel createTabPanel(JTable table, JTextField searchField) {
-        JPanel panel = new JPanel(new BorderLayout());
-        JPanel header = new JPanel(new BorderLayout());
+    private VBox createTabPanel(TableView<LogFile> table, TextField searchField) {
+        VBox panel = new VBox();
+        panel.setPadding(new Insets(10));
+        panel.setSpacing(10);
 
-        JPanel searchPanel = new JPanel(new BorderLayout(5, 0));
-        searchPanel.add(new JLabel("Filter by Date or Name:"), BorderLayout.WEST);
-        searchPanel.add(searchField, BorderLayout.CENTER);
+        HBox searchPanel = new HBox(10);
+        searchPanel.setAlignment(Pos.CENTER_LEFT);
+        Label searchLabel = new Label("Filter by Date or Name:");
+        HBox.setHgrow(searchField, Priority.ALWAYS);
+        searchPanel.getChildren().addAll(searchLabel, searchField);
 
-        header.add(searchPanel, BorderLayout.SOUTH);
-        panel.add(header, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        VBox.setVgrow(table, Priority.ALWAYS);
+        panel.getChildren().addAll(searchPanel, table);
         return panel;
     }
 
-    private JTextField createSearchField(TableRowSorter<LogFileTableModel> sorter) {
-        JTextField searchField = new JTextField();
-        searchField.getDocument().addDocumentListener(new DocumentListener() {
-            public void insertUpdate(DocumentEvent e) { updateFilter(); }
-            public void removeUpdate(DocumentEvent e) { updateFilter(); }
-            public void changedUpdate(DocumentEvent e) { updateFilter(); }
+    private TextField createSearchField(FilteredList<LogFile> filteredData) {
+        TextField searchField = new TextField();
+        searchField.setPromptText("Search...");
+        searchField.setStyle("-fx-background-radius: 10; -fx-padding: 5 10 5 10;"); // HIG search field style
 
-            private void updateFilter() {
-                String text = searchField.getText();
-                if (text.trim().isEmpty()) {
-                    sorter.setRowFilter(null);
-                } else {
-                    try {
-                        // Filter by date or name
-                        sorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
-                    } catch (PatternSyntaxException e) {
-                        // Ignore invalid regex
-                    }
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            filteredData.setPredicate(logFile -> {
+                if (newValue == null || newValue.isEmpty()) {
+                    return true;
                 }
-            }
+
+                try {
+                    Pattern pattern = Pattern.compile(newValue, Pattern.CASE_INSENSITIVE);
+                    if (pattern.matcher(logFile.getName()).find()) {
+                        return true;
+                    }
+                    if (logFile.getDate() != null && pattern.matcher(logFile.getDate().toString()).find()) {
+                        return true;
+                    }
+                } catch (PatternSyntaxException e) {
+                    // Ignore invalid regex while typing
+                }
+
+                String lowerCaseFilter = newValue.toLowerCase();
+                if (logFile.getName().toLowerCase().contains(lowerCaseFilter)) {
+                    return true;
+                }
+                if (logFile.getDate() != null && logFile.getDate().toString().contains(lowerCaseFilter)) {
+                    return true;
+                }
+
+                return false;
+            });
         });
         return searchField;
     }
@@ -317,8 +381,10 @@ public class LogsPanel extends JPanel {
             }
         }
 
-        mAppListModel.setLogFiles(appLogs);
-        mTwoToneListModel.setLogFiles(twoToneLogs);
-        mEventListModel.setLogFiles(eventLogs);
+        Platform.runLater(() -> {
+            mAppListModel.setAll(appLogs);
+            mTwoToneListModel.setAll(twoToneLogs);
+            mEventListModel.setAll(eventLogs);
+        });
     }
 }
