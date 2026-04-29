@@ -74,6 +74,7 @@ public class TwoToneEditor extends SplitPane
         }
 
         mTableView = new TableView<>(mObservableConfigs);
+        mTableView.setPlaceholder(new Label("No Two Tone Detectors Configured"));
 
         TableColumn<TwoToneConfiguration, String> aliasCol = new TableColumn<>("Name");
         aliasCol.setCellValueFactory(new PropertyValueFactory<>("alias"));
