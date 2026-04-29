@@ -89,6 +89,24 @@ public class StreamingEditor extends SplitPane
     private final StreamConfigurationEditorModificationListener mStreamConfigurationEditorModificationListener =
         new StreamConfigurationEditorModificationListener();
 
+
+
+    public void process(StreamTabRequest request)
+    {
+        if(request instanceof ViewStreamRequest)
+        {
+            ViewStreamRequest viewRequest = (ViewStreamRequest)request;
+            BroadcastConfiguration config = viewRequest.getBroadcastConfiguration();
+
+            if(config != null)
+            {
+                ConfiguredBroadcast configuredBroadcast = mPlaylistManager.getBroadcastModel().getConfiguredBroadcast(config);
+                getConfiguredBroadcastTableView().getSelectionModel().select(configuredBroadcast);
+                getTabPane().getSelectionModel().select(getConfigurationTab());
+            }
+        }
+    }
+
     /**
      * Constructs an instance
      * @param playlistManager for accessing streaming model
