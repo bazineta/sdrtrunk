@@ -1,15 +1,16 @@
 package io.github.dsheirer.gui;
 
-import javax.swing.JLabel;
+import javafx.application.Platform;
+import javafx.scene.control.Label;
 import java.lang.management.ManagementFactory;
 import com.sun.management.OperatingSystemMXBean;
 import java.util.TimerTask;
 
 public class SystemHealthAdvisorTask extends TimerTask {
-    private final JLabel performanceLabel;
+    private final Label performanceLabel;
     private final OperatingSystemMXBean osBean;
 
-    public SystemHealthAdvisorTask(JLabel performanceLabel) {
+    public SystemHealthAdvisorTask(Label performanceLabel) {
         this.performanceLabel = performanceLabel;
         this.osBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     }
@@ -25,25 +26,32 @@ public class SystemHealthAdvisorTask extends TimerTask {
         String cpuStatus = cpuLoad < 0.0 ? "Unknown" : String.format("%.1f%%", cpuLoad * 100);
         String memoryStatus = String.format("%.1f%%", memoryUsage * 100);
 
-        String suggestions = "<p>No suggestions at this time.</p>";
+        String suggestions = "No suggestions at this time.";
+        boolean warning = false;
+
         if (cpuLoad > 0.8) {
-            suggestions = "<p style='color:red;'>High CPU usage detected. Consider reducing sample rates or disabling waterfall displays to prevent audio dropouts.</p>";
+            suggestions = "High CPU usage detected. Consider reducing sample rates or disabling waterfall displays to prevent audio dropouts.";
+            warning = true;
         } else if (memoryUsage > 0.8) {
-             suggestions = "<p style='color:red;'>High Memory usage detected. Consider closing unused features or tuners.</p>";
+             suggestions = "High Memory usage detected. Consider closing unused features or tuners.";
+             warning = true;
         }
 
-        final String finalHtml = "<html><div style='text-align: center; padding: 20px;'>"
-                + "<h1>System Health & Performance Advisor</h1>"
-                + "<p>Status: Active</p>"
-                + "<p>CPU Usage: " + cpuStatus + "</p>"
-                + "<p>Memory Usage: " + memoryStatus + "</p>"
-                + "<br>"
-                + "<p><i>Optimization Suggestions:</i></p>"
-                + suggestions
-                + "</div></html>";
+        final String statusText = "Status: Active\n"
+                + "CPU Usage: " + cpuStatus + "\n"
+                + "Memory Usage: " + memoryStatus + "\n\n"
+                + "Optimization Suggestions:\n"
+                + suggestions;
 
-        javax.swing.SwingUtilities.invokeLater(() -> {
-            performanceLabel.setText(finalHtml);
+        final boolean isWarning = warning;
+
+        Platform.runLater(() -> {
+            performanceLabel.setText(statusText);
+            if (isWarning) {
+                performanceLabel.setStyle("-fx-text-fill: #ff3b30;"); // HIG destructive red
+            } else {
+                performanceLabel.setStyle("-fx-text-fill: -fx-text-base-color;"); // default
+            }
         });
     }
 }
