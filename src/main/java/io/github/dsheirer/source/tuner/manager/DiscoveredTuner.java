@@ -291,6 +291,19 @@ public abstract class DiscoveredTuner implements ITunerErrorListener
             return;
         }
 
+        if ("USB Error - Device Disconnected".equals(errorMessage)) {
+            mErrorMessage = errorMessage;
+            mLog.info("Tuner Error - Device Disconnected - Initiating Recovery - " + getId());
+            stop();
+            setTunerStatus(TunerStatus.RECOVERING);
+
+            if (mRecoveryTask != null && !mRecoveryTask.isDone()) {
+                mRecoveryTask.cancel(true);
+            }
+            mRecoveryTask = ThreadPool.SCHEDULED.schedule(new DisconnectRecoveryRunnable(), 5, TimeUnit.SECONDS);
+            return;
+        }
+
         mErrorMessage = errorMessage;
         mLog.info("Tuner Error - Stopping - " + getId() + " Error: " + errorMessage);
         stop();
@@ -394,6 +407,50 @@ public abstract class DiscoveredTuner implements ITunerErrorListener
                         mRecoveryTask.cancel(false);
                     }
                     setErrorMessage("Permanent USB Error - Transfer Buffers Exhausted");
+                }
+            }
+        }
+    }
+
+    private class DisconnectRecoveryRunnable implements Runnable {
+        private long mStartTime = System.currentTimeMillis();
+
+        public DisconnectRecoveryRunnable() {
+        }
+
+        public DisconnectRecoveryRunnable(long startTime) {
+            mStartTime = startTime;
+        }
+
+        @Override
+        public void run() {
+            long elapsedMillis = System.currentTimeMillis() - mStartTime;
+            long elapsedMinutes = TimeUnit.MILLISECONDS.toMinutes(elapsedMillis);
+
+            mLog.info("Attempting device disconnect recovery for " + getId() + " - Elapsed: " + elapsedMinutes + " minutes");
+
+            try {
+                restart();
+
+                if (getTunerStatus() == TunerStatus.ENABLED) {
+                    mLog.info("Successfully recovered disconnected tuner " + getId());
+                    io.github.dsheirer.eventbus.MyEventBus.getGlobalEventBus().post(new TunerRecoveredEvent(DiscoveredTuner.this));
+                } else if (elapsedMinutes >= 45) {
+                    mLog.error("Failed to recover disconnected tuner " + getId() + " after 45 minutes.");
+                    setErrorMessage("Permanent USB Error - Device Disconnected");
+                } else {
+                    long nextDelay = (elapsedMinutes < 15) ? 5 : 300; // 5 seconds or 5 minutes (300 seconds)
+                    mLog.warn("Disconnect recovery failed for " + getId() + " - retrying in " + nextDelay + " seconds");
+                    mRecoveryTask = ThreadPool.SCHEDULED.schedule(new DisconnectRecoveryRunnable(mStartTime), nextDelay, TimeUnit.SECONDS);
+                }
+            } catch (Exception e) {
+                mLog.error("Error during disconnect recovery attempt for " + getId(), e);
+                if (elapsedMinutes >= 45) {
+                    mLog.error("Failed to recover disconnected tuner " + getId() + " after 45 minutes due to exception.");
+                    setErrorMessage("Permanent USB Error - Device Disconnected");
+                } else {
+                    long nextDelay = (elapsedMinutes < 15) ? 5 : 300;
+                    mRecoveryTask = ThreadPool.SCHEDULED.schedule(new DisconnectRecoveryRunnable(mStartTime), nextDelay, TimeUnit.SECONDS);
                 }
             }
         }

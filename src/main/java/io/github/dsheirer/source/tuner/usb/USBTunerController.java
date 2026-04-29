@@ -308,6 +308,24 @@ public abstract class USBTunerController extends TunerController
     }
 
     /**
+     * Forcefully releases and closes the libusb device when a disconnect is detected to avoid lockouts.
+     */
+    private void forceCloseDevice()
+    {
+        if(mDeviceHandle != null)
+        {
+            try {
+                LibUsb.releaseInterface(mDeviceHandle, USB_INTERFACE);
+                LibUsb.close(mDeviceHandle);
+            } catch (Exception e) {
+            }
+            mDeviceHandle = null;
+            mDevice = null;
+            mDeviceDescriptor = null;
+        }
+    }
+
+    /**
      * Starts streaming data from the tuner
      */
     private void startStreaming()
@@ -640,6 +658,11 @@ public abstract class USBTunerController extends TunerController
                 //libusb is still working it, then why did it indicate the transfer was completed?  So, we simply
                 //ignore this error code.  Other libraries simply ignore the submit status code altogether.
             }
+            else if(status == LibUsb.ERROR_NO_DEVICE || status == LibUsb.ERROR_PIPE)
+            {
+                mLog.error("USB device physically disconnected during submit - error [" + LibUsb.errorName(status) + "]");
+                ThreadPool.CACHED.submit(() -> { forceCloseDevice(); setErrorMessage("USB Error - Device Disconnected"); });
+            }
             else
             {
                 mLog.error("USB transfer [" + transfer + "] submit attempt failed with error [" + LibUsb.errorName(status) +
@@ -737,6 +760,10 @@ public abstract class USBTunerController extends TunerController
                     {
                         submitTransfer(transfer);
                     }
+                    break;
+                case LibUsb.TRANSFER_NO_DEVICE:
+                    mLog.error("USB device physically disconnected during transfer callback");
+                    ThreadPool.CACHED.submit(() -> { forceCloseDevice(); setErrorMessage("USB Error - Device Disconnected"); });
                     break;
                 default:
                     //Unexpected transfer error - shutdown the tuner
@@ -849,7 +876,13 @@ public abstract class USBTunerController extends TunerController
             {
                 try
                 {
-                    LibUsb.handleEventsTimeout(mDeviceContext, 250);
+                    int status = LibUsb.handleEventsTimeout(mDeviceContext, 250);
+                    if(status == LibUsb.ERROR_NO_DEVICE || status == LibUsb.ERROR_PIPE)
+                    {
+                        mProcessing = false;
+                        mLog.error("USB device physically disconnected during handle events - error [" + LibUsb.errorName(status) + "]");
+                        ThreadPool.CACHED.submit(() -> { forceCloseDevice(); setErrorMessage("USB Error - Device Disconnected"); });
+                    }
                 }
                 catch(Throwable throwable)
                 {
