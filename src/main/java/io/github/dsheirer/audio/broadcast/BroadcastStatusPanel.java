@@ -18,6 +18,10 @@
  */
 package io.github.dsheirer.audio.broadcast;
 
+import io.github.dsheirer.eventbus.MyEventBus;
+import io.github.dsheirer.gui.playlist.streaming.ViewStreamRequest;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import io.github.dsheirer.icon.Icon;
 import io.github.dsheirer.icon.IconModel;
 import io.github.dsheirer.preference.UserPreferences;
@@ -78,6 +82,25 @@ public class BroadcastStatusPanel extends JPanel
         mTable.getColumnModel().getColumn(BroadcastModel.COLUMN_BROADCASTER_STATUS).setCellRenderer(new StatusCellRenderer());
         mTable.getColumnModel().getColumn(BroadcastModel.COLUMN_BROADCAST_SERVER_TYPE).setCellRenderer(new ServerTypeRenderer());
         mColumnWidthMonitor = new JTableColumnWidthMonitor(mUserPreferences, mTable, mPreferenceKey);
+
+        mTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && e.getButton() == MouseEvent.BUTTON1) {
+                    int viewRowIndex = mTable.rowAtPoint(e.getPoint());
+                    if (viewRowIndex >= 0) {
+                        int modelRowIndex = mTable.convertRowIndexToModel(viewRowIndex);
+                        if (modelRowIndex >= 0) {
+                            String streamName = (String) mBroadcastModel.getValueAt(modelRowIndex, BroadcastModel.COLUMN_STREAM_NAME);
+                            BroadcastConfiguration config = mBroadcastModel.getBroadcastConfiguration(streamName);
+                            if (config != null) {
+                                MyEventBus.getGlobalEventBus().post(new ViewStreamRequest(config));
+                            }
+                        }
+                    }
+                }
+            }
+        });
 
         mTable.setFillsViewportHeight(true);
         mScrollPane = new JScrollPane(mTable);

@@ -27,6 +27,7 @@ import io.github.dsheirer.gui.playlist.channel.ChannelEditor;
 import io.github.dsheirer.gui.playlist.channel.ChannelTabRequest;
 import io.github.dsheirer.gui.playlist.manager.PlaylistManagerEditor;
 import io.github.dsheirer.gui.playlist.radioreference.RadioReferenceEditor;
+import io.github.dsheirer.gui.playlist.streaming.StreamTabRequest;
 import io.github.dsheirer.gui.playlist.streaming.StreamingEditor;
 
 import io.github.dsheirer.gui.playlist.twotone.TwoToneEditor;
@@ -86,6 +87,7 @@ public class PlaylistEditor extends BorderPane
 
     private AliasEditor mAliasEditor;
     private ChannelEditor mChannelEditor;
+    private StreamingEditor mStreamingEditor;
 
     /**
      * Constructs an instance
@@ -137,6 +139,13 @@ public class PlaylistEditor extends BorderPane
                 {
                     getTabPane().getSelectionModel().select(getChannelsTab());
                     getChannelEditor().process((ChannelTabRequest)request);
+                }
+                break;
+            case STREAM:
+                if(request instanceof StreamTabRequest)
+                {
+                    getTabPane().getSelectionModel().select(getStreamingTab());
+                    getStreamingEditor().process((StreamTabRequest)request);
                 }
                 break;
             case PLAYLIST:
@@ -331,12 +340,22 @@ public class PlaylistEditor extends BorderPane
         if(mStreamingTab == null)
         {
             mStreamingTab = new Tab("Streaming");
-            ScrollPane scrollPane = new ScrollPane(new StreamingEditor(mPlaylistManager));
+            ScrollPane scrollPane = new ScrollPane(getStreamingEditor());
             scrollPane.setFitToWidth(true);
             scrollPane.setFitToHeight(true);
             mStreamingTab.setContent(scrollPane);
         }
 
         return mStreamingTab;
+    }
+
+    private StreamingEditor getStreamingEditor()
+    {
+        if(mStreamingEditor == null)
+        {
+            mStreamingEditor = new StreamingEditor(mPlaylistManager);
+        }
+
+        return mStreamingEditor;
     }
 }

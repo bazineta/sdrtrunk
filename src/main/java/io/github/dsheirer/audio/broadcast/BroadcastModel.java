@@ -425,7 +425,7 @@ public class BroadcastModel extends AbstractTableModel implements Listener<Audio
      * @param configuration to search for
      * @return configured broadcast that matches, or null
      */
-    private ConfiguredBroadcast getConfiguredBroadcast(BroadcastConfiguration configuration)
+    public ConfiguredBroadcast getConfiguredBroadcast(BroadcastConfiguration configuration)
     {
         for(ConfiguredBroadcast configuredBroadcast: mConfiguredBroadcasts)
         {
