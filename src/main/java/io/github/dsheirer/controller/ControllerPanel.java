@@ -139,15 +139,13 @@ public class ControllerPanel extends JPanel
 
     public void setResourcePanel(javax.swing.JComponent resourcePanel) {
         mResourcePanel = resourcePanel;
+        add(mResourcePanel, BorderLayout.SOUTH);
+        mResourcePanel.setVisible(false);
     }
 
     public void setResourcePanelVisible(boolean visible) {
         if (mResourcePanel != null) {
-            if (visible) {
-                add(mResourcePanel, BorderLayout.SOUTH);
-            } else {
-                remove(mResourcePanel);
-            }
+            mResourcePanel.setVisible(visible);
             revalidate();
             repaint();
         }

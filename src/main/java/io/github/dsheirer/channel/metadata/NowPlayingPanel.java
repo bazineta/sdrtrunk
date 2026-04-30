@@ -99,11 +99,16 @@ public class NowPlayingPanel extends JPanel
     }
 
     public void setComponents(javax.swing.JComponent spectralPanel, javax.swing.JComponent broadcastStatusPanel, javax.swing.JComponent resourceStatusPanel) {
+        boolean initialized = (mSpectralPanel != null);
         mSpectralPanel = spectralPanel;
         mBroadcastStatusPanel = broadcastStatusPanel;
         mResourceStatusPanel = resourceStatusPanel;
 
-        setupWidgets();
+        if (!initialized) {
+            setupWidgets();
+        } else {
+            mWidgetContainer.ensureComponentInWidget("spectrum");
+        }
     }
 
 

@@ -22,7 +22,7 @@ public class WidgetContainer extends JPanel {
 
     public WidgetContainer(NowPlayingPreference preference) {
         mPreference = preference;
-        setLayout(new MigLayout("wrap 1, insets 16, fillx, gapy 12", "[grow,fill]"));
+        setLayout(new MigLayout("wrap 1, insets 0, fillx, hidemode 3, gapy 2", "[grow,fill]"));
     }
 
     public NowPlayingPreference getPreference() {
@@ -82,9 +82,7 @@ public class WidgetContainer extends JPanel {
                 add(indicator, "growx, wrap");
             }
 
-            if (w.isVisible()) {
-                add(w, "growx");
-            }
+            add(w, "growx");
         }
 
         if (mDraggingWidget != null && mDropIndex == mWidgets.size()) {
@@ -103,7 +101,8 @@ public class WidgetContainer extends JPanel {
             if (w.getId().equals(id)) {
                 w.setVisible(visible);
                 mPreference.setWidgetVisible(id, visible);
-                rebuildLayout();
+                revalidate();
+                repaint();
                 break;
             }
         }
@@ -116,6 +115,15 @@ public class WidgetContainer extends JPanel {
     public void onWidgetStateChanged(Widget widget) {
         if (widget.isMinimizeButtonVisible()) {
             mPreference.setWidgetMinimized(widget.getId(), widget.isMinimized());
+        }
+    }
+
+    public void ensureComponentInWidget(String id) {
+        for (Widget w : mWidgets) {
+            if (w.getId().equals(id)) {
+                w.ensureContentComponentParent();
+                break;
+            }
         }
     }
 

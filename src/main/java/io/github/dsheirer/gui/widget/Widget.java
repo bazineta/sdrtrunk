@@ -132,6 +132,14 @@ public class Widget extends JPanel {
         return mHeaderPanel;
     }
 
+    public void ensureContentComponentParent() {
+        if (mContentComponent != null && mContentComponent.getParent() != this) {
+            add(mContentComponent, "grow, wrap", 1);
+            revalidate();
+            repaint();
+        }
+    }
+
     public void setDragging(boolean dragging) {
         if (dragging) {
             mHeaderPanel.setBackground(UIManager.getColor("Component.focusColor"));
