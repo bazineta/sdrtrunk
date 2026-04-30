@@ -86,7 +86,7 @@ public class ApplicationPreferenceEditor extends HBox
             VBox diagCard = new VBox(10);
             diagCard.getStyleClass().add("preferences-card");
             Label monitoringLabel = new Label("Application Health and Diagnostic Monitoring.");
-            monitoringLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #333333;");
+            monitoringLabel.getStyleClass().add("kennebec-header");
 
             HBox diagRow = new HBox(10);
             diagRow.getStyleClass().add("preferences-card-row");
@@ -127,7 +127,7 @@ public class ApplicationPreferenceEditor extends HBox
 
             memoryRow.getChildren().addAll(getMemoryLimitLabel(), spacer3, getMemoryComboBox());
 
-            getMemoryWarningLabel().setStyle("-fx-text-fill: #8e8e93; -fx-font-size: 12px;");
+            getMemoryWarningLabel().getStyleClass().add("kennebec-secondary-text");
             memoryCard.getChildren().addAll(memoryRow, getMemoryWarningLabel());
 
             // Card 4: USB Monitor (Only on Windows 10/11)
@@ -137,7 +137,7 @@ public class ApplicationPreferenceEditor extends HBox
                 usbMonitorCard = new VBox(10);
                 usbMonitorCard.getStyleClass().add("preferences-card");
                 Label usbLabel = new Label("USB Monitor Script");
-                usbLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #333333;");
+                usbLabel.getStyleClass().add("kennebec-header");
 
                 HBox usbRow = new HBox(10);
                 usbRow.getStyleClass().add("preferences-card-row");
@@ -148,7 +148,7 @@ public class ApplicationPreferenceEditor extends HBox
                 usbRow.getChildren().addAll(installUsbLabel, spacer4, getUsbMonitorToggle());
 
                 Label usbDesc = new Label("Installs a background script to auto-reset failing SDR USB devices.");
-                usbDesc.setStyle("-fx-text-fill: #8e8e93; -fx-font-size: 12px;");
+                usbDesc.getStyleClass().add("kennebec-secondary-text");
 
                 usbMonitorCard.getChildren().addAll(usbLabel, usbRow, usbDesc);
             }
