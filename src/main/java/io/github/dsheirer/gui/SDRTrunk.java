@@ -126,10 +126,7 @@ public class SDRTrunk implements Listener<TunerEvent>, io.github.dsheirer.gui.Vi
             mTopContentPanel.add(mSpectralPanel, BorderLayout.CENTER);
         }
         if (mCurrentViewId != null && mCurrentViewId.equals("now_playing")) {
-            mControllerResourceStatusPanel = mJavaFxWindowManager.createStatusPanel(mResourceMonitor);
-        mNowPlayingResourceStatusPanel = mJavaFxWindowManager.createStatusPanel(mResourceMonitor);
-
-        mControllerPanel.getNowPlayingPanel().setComponents(mSpectralPanel, getBroadcastStatusPanel(), mNowPlayingResourceStatusPanel);
+            mControllerPanel.getNowPlayingPanel().setComponents(mSpectralPanel, getBroadcastStatusPanel(), mNowPlayingResourceStatusPanel);
             mControllerPanel.getNowPlayingPanel().setSpectralPanelVisible(!mSpectrumDisabled);
         }
         mMainContentPanel.revalidate();
@@ -783,10 +780,7 @@ public class SDRTrunk implements Listener<TunerEvent>, io.github.dsheirer.gui.Vi
             mTopContentPanel.remove(mSpectralPanel);
             mControllerPanel.setResourcePanelVisible(false);
             // Pass null for spectrum if disabled
-            mControllerResourceStatusPanel = mJavaFxWindowManager.createStatusPanel(mResourceMonitor);
-        mNowPlayingResourceStatusPanel = mJavaFxWindowManager.createStatusPanel(mResourceMonitor);
-
-        mControllerPanel.getNowPlayingPanel().setComponents(mSpectralPanel, getBroadcastStatusPanel(), mNowPlayingResourceStatusPanel);
+            mControllerPanel.getNowPlayingPanel().setComponents(mSpectralPanel, getBroadcastStatusPanel(), mNowPlayingResourceStatusPanel);
             mControllerPanel.getNowPlayingPanel().setSpectralPanelVisible(!mSpectrumDisabled);
         } else if (id.equals("tuners") && !mSpectrumDisabled) {
             mTopContentPanel.add(mSpectralPanel, BorderLayout.CENTER);
