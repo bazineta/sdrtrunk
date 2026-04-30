@@ -162,6 +162,21 @@ public class SDRTrunk implements Listener<TunerEvent>, io.github.dsheirer.gui.Vi
         mMainContentPanel.repaint();
     }
 
+    @Override
+    public boolean isSpectrumVisible() {
+        if (mCurrentViewId != null && mCurrentViewId.equals("now_playing")) {
+            return !mNowPlayingSpectrumDisabled;
+        } else if (mCurrentViewId != null && mCurrentViewId.equals("tuners")) {
+            return !mTunerSpectrumDisabled;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isResourceVisible() {
+        return mResourceStatusVisible;
+    }
+
     private final static Logger mLog = LoggerFactory.getLogger(SDRTrunk.class);
     private Preferences mPreferences = Preferences.userNodeForPackage(SDRTrunk.class);
 
