@@ -118,7 +118,7 @@ public class ControllerPanel extends JPanel
 
         mCardLayout = new CardLayout();
         mCardPanel = new JPanel(mCardLayout);
-        
+
         mCardPanel.add(mNowPlayingPanel, "now_playing");
         mCardPanel.add(mMapPanel, "map");
         mCardPanel.add(mTunerManagerPanel, "tuners");
@@ -139,13 +139,15 @@ public class ControllerPanel extends JPanel
 
     public void setResourcePanel(javax.swing.JComponent resourcePanel) {
         mResourcePanel = resourcePanel;
-        add(mResourcePanel, BorderLayout.SOUTH);
-        mResourcePanel.setVisible(false);
     }
 
     public void setResourcePanelVisible(boolean visible) {
         if (mResourcePanel != null) {
-            mResourcePanel.setVisible(visible);
+            if (visible) {
+                add(mResourcePanel, BorderLayout.SOUTH);
+            } else {
+                remove(mResourcePanel);
+            }
             revalidate();
             repaint();
         }
