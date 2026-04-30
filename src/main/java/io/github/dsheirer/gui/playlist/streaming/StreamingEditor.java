@@ -462,6 +462,31 @@ public class StreamingEditor extends SplitPane
             typeColumn.setPrefWidth(125);
             typeColumn.setText("Format");
             typeColumn.setCellValueFactory(new PropertyValueFactory<>("broadcastServerType"));
+            typeColumn.setCellFactory(param -> new TableCell<ConfiguredBroadcast, BroadcastServerType>() {
+                @Override
+                protected void updateItem(BroadcastServerType item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                        setGraphic(null);
+                    } else {
+                        setText(item.toString());
+                        if (item.getIconPath() != null) {
+                            io.github.dsheirer.icon.Icon icon = new io.github.dsheirer.icon.Icon("empty", item.getIconPath());
+                            javafx.scene.image.Image fxImage = icon.getFxImage();
+                            if (fxImage != null) {
+                                javafx.scene.image.ImageView imageView = new javafx.scene.image.ImageView(fxImage);
+                                setGraphic(imageView);
+                            } else {
+                                setGraphic(null);
+                            }
+                        } else {
+                            setGraphic(null);
+                        }
+                    }
+                }
+            });
+
 
 
             TableColumn stateColumn = new TableColumn("Stream Status");
